@@ -1,6 +1,6 @@
 package com.ufape.jachei.models;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "usuario")
