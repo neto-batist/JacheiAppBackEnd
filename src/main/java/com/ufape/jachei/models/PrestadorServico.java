@@ -2,6 +2,7 @@ package com.ufape.jachei.models;
 
 import com.ufape.jachei.models.base.BaseEntity;
 import jakarta.persistence.*;
+import java.util.Set;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -48,4 +49,12 @@ public class PrestadorServico extends BaseEntity {
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "id_contato")
     private Contato contato;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "prestadorservicos_has_servicos",
+            joinColumns = @JoinColumn(name = "id_prestador_servico"),
+            inverseJoinColumns = @JoinColumn(name = "id_servicos")
+    )
+    private Set<Servico> servicos;
 }

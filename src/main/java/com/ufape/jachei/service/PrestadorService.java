@@ -2,7 +2,10 @@ package com.ufape.jachei.service;
 
 import com.ufape.jachei.dto.PrestadorRequest;
 import com.ufape.jachei.models.PrestadorServico;
+import com.ufape.jachei.models.Servico;
 import com.ufape.jachei.repo.PrestadorServicoRepo;
+import com.ufape.jachei.repo.ServicoRepo;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,5 +48,30 @@ public class PrestadorService {
 
     public Optional<PrestadorServico> buscarPorUid(String uid) {
         return prestadorRepo.findByFirebaseUid(uid);
+    }
+
+    @Autowired // Ou via construtor
+    private ServicoRepo servicoRepo;
+
+    @Transactional
+    public void adicionarServico(String uidPrestador, Long idServico) {
+        PrestadorServico prestador = prestadorRepo.findByFirebaseUid(uidPrestador)
+                .orElseThrow(() -> new RuntimeException("Prestador não encontrado"));
+
+        Servico servico = servicoRepo.findById(idServico)
+                .orElseThrow(() -> new RuntimeException("Serviço não encontrado"));
+
+        // Adiciona à lista (o Set garante que não duplica)
+        prestador.getServicos().add(servico);
+        prestadorRepo.save(prestador);
+    }
+
+    @Transactional
+    public void removerServico(String uidPrestador, Long idServico) {
+        PrestadorServico prestador = prestadorRepo.findByFirebaseUid(uidPrestador)
+                .orElseThrow(() -> new RuntimeException("Prestador não encontrado"));
+
+        prestador.getServicos().removeIf(s -> s.getId().equals(idServico));
+        prestadorRepo.save(prestador);
     }
 }

@@ -1,4 +1,4 @@
-package com.ufape.jachei.servicos;
+package com.ufape.jachei.service;
 
 
 import com.ufape.jachei.models.Servico;

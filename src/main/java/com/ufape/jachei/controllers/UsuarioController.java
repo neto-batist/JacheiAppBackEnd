@@ -1,54 +1,56 @@
 package com.ufape.jachei.controllers;
 
+import com.ufape.jachei.dto.PrestadorResponse;
+import com.ufape.jachei.dto.UsuarioRequest;
+import com.ufape.jachei.models.PrestadorServico;
 import com.ufape.jachei.models.Usuario;
-import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.ufape.jachei.service.UsuarioService;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-@RequestMapping(value =  "/jachei/usuarios")
 @RestController
+@RequestMapping("/api/usuarios")
 public class UsuarioController {
-    @Autowired
-    private Facade facede;
 
-    @PostMapping(value = "/salvar-usuario")
-    public String saveUsuario(@RequestBody Usuario entity) {
-        facede.saveUsuario(entity);
-        return "Salvo...";
+    private final UsuarioService usuarioService;
+
+    public UsuarioController(UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
     }
 
-    @GetMapping( value = "/usuario/{id}" )
-    public Usuario findUsuario(@PathVariable Long id) {
-        return facede.findByIdUsuario(id);
+    @PostMapping
+    public ResponseEntity<Usuario> cadastrar(@Valid @RequestBody UsuarioRequest dto) {
+        Usuario usuario = usuarioService.cadastrarUsuario(dto);
+        return ResponseEntity.status(201).body(usuario);
     }
 
-    @GetMapping( value = "/ver-todos-usuarios" )
-    public List<Usuario> findAllUsuarios() {
-        return facede.findAllUsuarios();
+    @GetMapping("/me/{uid}")
+    public ResponseEntity<Usuario> buscarPerfil(@PathVariable String uid) {
+        return usuarioService.buscarPorUid(uid)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    @PutMapping( value = "/alterar-usurario/{id}" )
-    public String updateUser(@PathVariable Long id, @RequestBody @NotNull Usuario usuario ){
-        Usuario updateUser = facede.findByIdUsuario(id);
-
-        updateUser.setLinkFoto(usuario.getLinkFoto());
-        updateUser.setNome(usuario.getNome());
-
-        facede.saveUsuario(updateUser);
-
-        return "Alterado...";
-    };
-
-    @DeleteMapping( value = "/remover-usuario/{id}")
-    public void deleteByIdUsuario(@PathVariable Long id) {
-        facede.deleteByIdUsuario(id);
+    @PostMapping("/me/{uid}/favoritos/{idPrestador}")
+    public ResponseEntity<Void> favoritar(@PathVariable String uid, @PathVariable Long idPrestador) {
+        usuarioService.alternarFavorito(uid, idPrestador);
+        return ResponseEntity.ok().build();
     }
 
-    public void deleteUsuario(Usuario entity) {
-        facede.deleteUsuario(entity);
+    @GetMapping("/me/{uid}/favoritos")
+    public ResponseEntity<List<PrestadorResponse>> listarFavoritos(@PathVariable String uid) {
+        Set<PrestadorServico> favoritos = usuarioService.listarFavoritos(uid);
+
+        // Converte a lista de Entidades para DTOs para evitar Loop e dados sensíveis
+        List<PrestadorResponse> resposta = favoritos.stream()
+                .map(PrestadorResponse::fromEntity)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(resposta);
     }
-
-
 }

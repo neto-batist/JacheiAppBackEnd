@@ -41,4 +41,16 @@ public class PrestadorController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @PostMapping("/me/{uid}/servicos/{idServico}")
+    public ResponseEntity<Void> adicionarServico(@PathVariable String uid, @PathVariable Long idServico) {
+        prestadorService.adicionarServico(uid, idServico);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/me/{uid}/servicos/{idServico}")
+    public ResponseEntity<Void> removerServico(@PathVariable String uid, @PathVariable Long idServico) {
+        prestadorService.removerServico(uid, idServico);
+        return ResponseEntity.ok().build();
+    }
 }

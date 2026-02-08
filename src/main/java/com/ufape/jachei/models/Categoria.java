@@ -1,33 +1,16 @@
 package com.ufape.jachei.models;
 
-
+import com.ufape.jachei.models.base.BaseEntity;
 import jakarta.persistence.*;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Entity
 @Table(name = "categorias")
-public class Categoria {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false)
-    private Long id;
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class Categoria extends BaseEntity {
 
-    @Column(name = "nome", nullable = false, length = 100)
+    @Column(nullable = false, unique = true)
     private String nome;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getNome() {
-        return nome;
-    }
-
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
 }

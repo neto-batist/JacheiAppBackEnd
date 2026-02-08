@@ -1,59 +1,32 @@
 package com.ufape.jachei.controllers;
 
+import com.ufape.jachei.dto.AvaliacaoRequest;
 import com.ufape.jachei.models.Avaliacao;
-import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.ufape.jachei.service.AvaliacaoService;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@RequestMapping(value =  "/jachei/avaliacoes")
 @RestController
+@RequestMapping("/api/avaliacoes")
 public class AvaliacaoController {
-    @Autowired
-    private Facade facede;
 
-    @PostMapping(value = "/salvar-avaliacao")
-    public String saveAvaliacao(@RequestBody Avaliacao entity) {
-        facede.saveAvaliacao(entity);
-        return "Salvo...";
+    private final AvaliacaoService avaliacaoService;
+
+    public AvaliacaoController(AvaliacaoService avaliacaoService) {
+        this.avaliacaoService = avaliacaoService;
     }
 
-    @GetMapping( value = "/avaliacao/{id}" )
-    public Avaliacao findAvaliacao(@PathVariable Long id) {
-        return facede.findByIdAvaliacao(id);
+    @PostMapping
+    public ResponseEntity<Avaliacao> criar(@Valid @RequestBody AvaliacaoRequest dto) {
+        Avaliacao nova = avaliacaoService.avaliar(dto);
+        return ResponseEntity.status(201).body(nova);
     }
 
-    @GetMapping( value = "/avaliacoes-do-prestador/{id}" )
-    public List<Avaliacao> findAvaliacaoOfThisPrestador(@PathVariable Long id) {
-        return facede.findAllAvaliacaoOfThisPrestador(id);
+    @GetMapping("/prestador/{id}")
+    public ResponseEntity<List<Avaliacao>> listarDoPrestador(@PathVariable Long id) {
+        return ResponseEntity.ok(avaliacaoService.listarPorPrestador(id));
     }
-
-    @GetMapping( value = "/ver-todas-avaliacoes" )
-    public List<Avaliacao> findAllAvaliacoes() {
-        return facede.findAllAvaliacoes();
-    }
-
-    @PutMapping( value = "/alterar-avaliacao/{id}" )
-    public String updateAvaliacao(@PathVariable Long id, @RequestBody @NotNull Avaliacao avaliacao ){
-        Avaliacao updateAvaliacao = facede.findByIdAvaliacao(id);
-
-        updateAvaliacao.setDescricao(avaliacao.getDescricao());
-        updateAvaliacao.setNota(avaliacao.getNota());
-
-        facede.saveAvaliacao(updateAvaliacao);
-
-        return "Alterado...";
-    };
-
-    @DeleteMapping( value = "/remover-avaliacao/{id}")
-    public void deleteByIdAvaliacao(@PathVariable Long id) {
-        facede.deleteByIdAvaliacao(id);
-    }
-
-    public void deleteAvaliacao(Avaliacao entity) {
-        facede.deleteAvaliacao(entity);
-    }
-
-
 }

@@ -1,32 +1,26 @@
 package com.ufape.jachei.models;
 
+import com.ufape.jachei.models.base.BaseEntity;
 import jakarta.persistence.*;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import java.util.Set;
 
 @Entity
 @Table(name = "servicos")
-public class Servico {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false)
-    private Long id;
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class Servico extends BaseEntity {
 
-    @Column(name = "nome", nullable = false, length = 100)
+    @Column(nullable = false, unique = true)
     private String nome;
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getNome() {
-        return nome;
-    }
-
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-
+    // Um serviço pode ter várias categorias (Ex: "Limpeza de Piscina" -> "Limpeza", "Casa")
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "servicos_has_categorias",
+            joinColumns = @JoinColumn(name = "id_servicos"),
+            inverseJoinColumns = @JoinColumn(name = "id_categoria")
+    )
+    private Set<Categoria> categorias;
 }
