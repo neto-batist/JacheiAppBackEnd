@@ -1,6 +1,8 @@
 package com.ufape.jachei.service;
 
 import com.ufape.jachei.dto.PrestadorRequest;
+import com.ufape.jachei.models.Contato;
+import com.ufape.jachei.models.Endereco;
 import com.ufape.jachei.models.PrestadorServico;
 import com.ufape.jachei.models.Servico;
 import com.ufape.jachei.repo.PrestadorServicoRepo;
@@ -23,8 +25,6 @@ public class PrestadorService {
 
     @Transactional
     public PrestadorServico cadastrarPrestador(PrestadorRequest dto) {
-        // Futuramente: Validar se CPF ou Email já existem antes de salvar
-
         PrestadorServico prestador = new PrestadorServico();
         prestador.setNome(dto.getNome());
         prestador.setCpf(dto.getCpf());
@@ -38,6 +38,32 @@ public class PrestadorService {
         // Flags
         prestador.setAtende24h(dto.isAtende24h());
         prestador.setFazDelivery(dto.isFazDelivery());
+
+        // Mapeando o Endereço que veio da requisição
+        Endereco endereco = new Endereco();
+        if (dto.getEndereco() != null) {
+            endereco.setBairro(dto.getEndereco().getBairro());
+            endereco.setCep(dto.getEndereco().getCep());
+            endereco.setCidade(dto.getEndereco().getCidade());
+            endereco.setRua(dto.getEndereco().getRua());
+            endereco.setNumero(dto.getEndereco().getNumero());
+            endereco.setUf(dto.getEndereco().getUf());
+        }
+        prestador.setEndereco(endereco);
+
+        // Mapeando o Contato que veio da requisição
+        Contato contato = new Contato();
+        if (dto.getContato() != null) {
+            contato.setTelefone(dto.getContato().getTelefone());
+            contato.setCelular(dto.getContato().getCelular());
+            contato.setWhatsApp(dto.getContato().getWhatsApp() != null ? dto.getContato().getWhatsApp() : (byte) 0);
+            contato.setEmail(dto.getContato().getEmail());
+            contato.setInstagramLink(dto.getContato().getInstagramLink());
+            contato.setFaceBookLink(dto.getContato().getFaceBookLink());
+        } else {
+            contato.setWhatsApp((byte) 0); // Fallback de segurança para o banco
+        }
+        prestador.setContato(contato);
 
         return prestadorRepo.save(prestador);
     }
