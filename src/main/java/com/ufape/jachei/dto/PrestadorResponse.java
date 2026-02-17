@@ -17,8 +17,8 @@ public class PrestadorResponse {
     public static PrestadorResponse fromEntity(PrestadorServico entity) {
         PrestadorResponse dto = new PrestadorResponse();
         dto.setId(entity.getId());
-        dto.setNome(entity.getNome());
-        dto.setFotoPerfil(entity.getFotoPerfil());
+        dto.setNome(entity.getUsuario().getNome());
+        dto.setFotoPerfil(entity.getUsuario().getLinkFoto());
         dto.setLatitude(entity.getLatitude());
         dto.setLongitude(entity.getLongitude());
         dto.setAtende24h(entity.isAtende24h());

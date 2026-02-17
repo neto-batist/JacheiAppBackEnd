@@ -15,19 +15,11 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class PrestadorServico extends BaseEntity {
 
-    @Column(nullable = false)
-    private String nome;
-
-    @Column(nullable = false, unique = true)
-    private String email;
-
-    @Column(name = "firebase_uid", unique = true, nullable = false)
-    private String firebaseUid;
+    @OneToOne(optional = false)
+    @JoinColumn(name = "usuario_id", referencedColumnName = "id", nullable = false)
+    private Usuario usuario;
 
     private String cpf;
-
-    @Column(name = "foto_perfil")
-    private String fotoPerfil;
 
     @Column(columnDefinition = "TEXT")
     private String descricaoBio;

@@ -26,5 +26,5 @@ public interface PrestadorServicoRepo extends JpaRepository<PrestadorServico, Lo
             @Param("userLng") double userLng,
             @Param("distanceKm") double distanceKm);
 
-    Optional<PrestadorServico> findByFirebaseUid(String firebaseUid);
+    Optional<PrestadorServico> findByUsuario_FirebaseUid(String firebaseUid);
 }

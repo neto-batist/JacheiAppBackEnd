@@ -1,12 +1,10 @@
 package com.ufape.jachei.service;
 
 import com.ufape.jachei.dto.PrestadorRequest;
-import com.ufape.jachei.models.Contato;
-import com.ufape.jachei.models.Endereco;
-import com.ufape.jachei.models.PrestadorServico;
-import com.ufape.jachei.models.Servico;
+import com.ufape.jachei.models.*;
 import com.ufape.jachei.repo.PrestadorServicoRepo;
 import com.ufape.jachei.repo.ServicoRepo;
+import com.ufape.jachei.repo.UsuarioRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,20 +16,27 @@ import java.util.Optional;
 public class PrestadorService {
 
     private final PrestadorServicoRepo prestadorRepo;
+    private final UsuarioRepo usuarioRepo; // NOVO
 
-    public PrestadorService(PrestadorServicoRepo prestadorRepo) {
+    public PrestadorService(PrestadorServicoRepo prestadorRepo, UsuarioRepo usuarioRepo) {
         this.prestadorRepo = prestadorRepo;
+        this.usuarioRepo = usuarioRepo;
     }
 
     @Transactional
     public PrestadorServico cadastrarPrestador(PrestadorRequest dto) {
-        PrestadorServico prestador = new PrestadorServico();
-        prestador.setNome(dto.getNome());
-        prestador.setCpf(dto.getCpf());
-        prestador.setEmail(dto.getEmail());
-        prestador.setFirebaseUid(dto.getFirebaseUid());
+        // 1. Busca o usuário que já existe
+        Usuario usuario = usuarioRepo.findByFirebaseUid(dto.getFirebaseUid())
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado. Crie a conta antes de virar prestador."));
 
-        // Dados Geo
+        PrestadorServico prestador = new PrestadorServico();
+
+        // 2. VINCULA O USUÁRIO AO PRESTADOR (Aqui ele herda Foto, Nome e Email automaticamente!)
+        prestador.setUsuario(usuario);
+
+        prestador.setCpf(dto.getCpf());
+
+        //// Dados Geo
         prestador.setLatitude(dto.getLatitude());
         prestador.setLongitude(dto.getLongitude());
 
@@ -73,7 +78,7 @@ public class PrestadorService {
     }
 
     public Optional<PrestadorServico> buscarPorUid(String uid) {
-        return prestadorRepo.findByFirebaseUid(uid);
+        return prestadorRepo.findByUsuario_FirebaseUid(uid);
     }
 
     @Autowired // Ou via construtor
@@ -81,7 +86,7 @@ public class PrestadorService {
 
     @Transactional
     public void adicionarServico(String uidPrestador, Long idServico) {
-        PrestadorServico prestador = prestadorRepo.findByFirebaseUid(uidPrestador)
+        PrestadorServico prestador = prestadorRepo.findByUsuario_FirebaseUid(uidPrestador)
                 .orElseThrow(() -> new RuntimeException("Prestador não encontrado"));
 
         Servico servico = servicoRepo.findById(idServico)
@@ -94,7 +99,7 @@ public class PrestadorService {
 
     @Transactional
     public void removerServico(String uidPrestador, Long idServico) {
-        PrestadorServico prestador = prestadorRepo.findByFirebaseUid(uidPrestador)
+        PrestadorServico prestador = prestadorRepo.findByUsuario_FirebaseUid(uidPrestador)
                 .orElseThrow(() -> new RuntimeException("Prestador não encontrado"));
 
         prestador.getServicos().removeIf(s -> s.getId().equals(idServico));
