@@ -2,6 +2,7 @@ package com.ufape.jachei.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
@@ -17,4 +18,7 @@ public class UsuarioRequest {
     private String firebaseUid;
 
     private String linkFoto;
+
+    @NotBlank(message = "A senha é obrigatória")
+    private String senha;
 }

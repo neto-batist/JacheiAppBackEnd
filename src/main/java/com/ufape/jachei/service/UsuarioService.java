@@ -5,6 +5,10 @@ import com.ufape.jachei.models.PrestadorServico;
 import com.ufape.jachei.models.Usuario;
 import com.ufape.jachei.repo.PrestadorServicoRepo;
 import com.ufape.jachei.repo.UsuarioRepo;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,23 +22,30 @@ import java.util.Optional;
 import java.util.Set;
 
 @Service
-public class UsuarioService {
+public class UsuarioService implements UserDetailsService {
 
     private final UsuarioRepo usuarioRepo;
     private final PrestadorServicoRepo prestadorRepo;
+    private final PasswordEncoder passwordEncoder;
 
     // Injeção de dependência via construtor
-    public UsuarioService(UsuarioRepo usuarioRepo, PrestadorServicoRepo prestadorRepo) {
+    public UsuarioService(UsuarioRepo usuarioRepo, PrestadorServicoRepo prestadorRepo, PasswordEncoder passwordEncoder) {
         this.usuarioRepo = usuarioRepo;
         this.prestadorRepo = prestadorRepo;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
      * Cadastra um novo usuário ou retorna o existente se já houver login
      */
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        return usuarioRepo.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado com e-mail: " + email));
+    }
+
     @Transactional
     public Usuario cadastrarUsuario(UsuarioRequest dto) {
-        // Verifica se já existe pelo UID do Firebase para evitar duplicação
         Optional<Usuario> existente = usuarioRepo.findByFirebaseUid(dto.getFirebaseUid());
         if (existente.isPresent()) {
             return existente.get();
@@ -45,6 +56,31 @@ public class UsuarioService {
         usuario.setEmail(dto.getEmail());
         usuario.setFirebaseUid(dto.getFirebaseUid());
         usuario.setLinkFoto(dto.getLinkFoto());
+
+        // HASH DA SENHA: Nunca salvar texto puro no banco!
+        if (dto.getSenha() != null && !dto.getSenha().isEmpty()) {
+            usuario.setSenha(passwordEncoder.encode(dto.getSenha()));
+        }
+
+        return usuarioRepo.save(usuario);
+    }
+
+    // =========================================================================
+    // NOVO: MÉTODO PARA A TELA DE CONFIGURAÇÕES (UPDATE)
+    // =========================================================================
+    @Transactional
+    public Usuario atualizarDadosPerfil(String uid, String novoNome, String novaSenha) {
+        Usuario usuario = usuarioRepo.findByFirebaseUid(uid)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+
+        if (novoNome != null && !novoNome.trim().isEmpty()) {
+            usuario.setNome(novoNome);
+        }
+
+        // Se o usuário quiser trocar a senha, fazemos o hash da nova
+        if (novaSenha != null && !novaSenha.trim().isEmpty()) {
+            usuario.setSenha(passwordEncoder.encode(novaSenha));
+        }
 
         return usuarioRepo.save(usuario);
     }
