@@ -7,7 +7,13 @@ import com.ufape.jachei.repo.PrestadorServicoRepo;
 import com.ufape.jachei.repo.UsuarioRepo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.Set;
 
@@ -84,5 +90,59 @@ public class UsuarioService {
         usuario.getFavoritos().size();
 
         return usuario.getFavoritos();
+    }
+
+    public Usuario atualizarFotoPerfil(String uid, MultipartFile arquivo) {
+        Usuario usuario = buscarPorUid(uid)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+
+        if (arquivo.isEmpty()) {
+            throw new RuntimeException("O arquivo de imagem não pode estar vazio.");
+        }
+
+        try {
+            // 1. Garante que a pasta física existe
+            String diretorioUpload = "uploads/";
+            Path caminhoUpload = Paths.get(diretorioUpload);
+            if (!Files.exists(caminhoUpload)) {
+                Files.createDirectories(caminhoUpload);
+            }
+
+            // 2. RECICLAGEM (Apaga a foto antiga caso seja um arquivo do nosso servidor)
+            String fotoAtual = usuario.getLinkFoto();
+            if (fotoAtual != null && fotoAtual.contains("/uploads/")) {
+                // Pega apenas o nome final do arquivo que está na URL (ex: "uid_12345.jpg")
+                String nomeArquivoAntigo = fotoAtual.substring(fotoAtual.lastIndexOf("/") + 1);
+                Path caminhoArquivoAntigo = caminhoUpload.resolve(nomeArquivoAntigo);
+
+                // Deleta do HD, liberando espaço
+                Files.deleteIfExists(caminhoArquivoAntigo);
+            }
+
+            // 3. Prepara o nome do NOVO arquivo
+            String nomeOriginal = arquivo.getOriginalFilename();
+            String extensao = "";
+            if (nomeOriginal != null && nomeOriginal.contains(".")) {
+                extensao = nomeOriginal.substring(nomeOriginal.lastIndexOf("."));
+            }
+
+            // Adicionamos o "System.currentTimeMillis()" para criar um nome de arquivo ÚNICO.
+            // Isso força o Flutter a baixar a imagem nova e não usar o cache antigo!
+            String novoNomeArquivo = uid + "_" + System.currentTimeMillis() + extensao;
+            Path caminhoFisicoArquivo = caminhoUpload.resolve(novoNomeArquivo);
+
+            // 4. Salva a nova foto no HD
+            Files.copy(arquivo.getInputStream(), caminhoFisicoArquivo, StandardCopyOption.REPLACE_EXISTING);
+
+            // 5. Monta a URL nova para o banco de dados
+            String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            String urlDaFoto = baseUrl + "/uploads/" + novoNomeArquivo;
+
+            usuario.setLinkFoto(urlDaFoto);
+            return usuarioRepo.save(usuario);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Falha ao salvar a imagem no servidor", e);
+        }
     }
 }

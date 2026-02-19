@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -52,5 +54,14 @@ public class UsuarioController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(resposta);
+    }
+
+    @PostMapping(value = "/me/{uid}/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Usuario> atualizarFotoPerfil(
+            @PathVariable String uid,
+            @RequestParam("foto") MultipartFile foto) {
+
+        Usuario usuarioAtualizado = usuarioService.atualizarFotoPerfil(uid, foto);
+        return ResponseEntity.ok(usuarioAtualizado);
     }
 }
