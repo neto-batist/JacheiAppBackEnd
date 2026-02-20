@@ -22,7 +22,7 @@ import java.util.Optional;
 import java.util.Set;
 
 @Service
-public class UsuarioService implements UserDetailsService {
+public class UsuarioService {
 
     private final UsuarioRepo usuarioRepo;
     private final PrestadorServicoRepo prestadorRepo;
@@ -35,14 +35,6 @@ public class UsuarioService implements UserDetailsService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    /**
-     * Cadastra um novo usuário ou retorna o existente se já houver login
-     */
-    @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return usuarioRepo.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado com e-mail: " + email));
-    }
 
     @Transactional
     public Usuario cadastrarUsuario(UsuarioRequest dto) {
