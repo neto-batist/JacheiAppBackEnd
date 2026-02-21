@@ -69,14 +69,22 @@ public class PrestadorController {
     }
 
     @PostMapping("/me/{uid}/servicos/{idServico}")
-    public ResponseEntity<Void> adicionarServico(@PathVariable String uid, @PathVariable Long idServico) {
-        prestadorService.adicionarServico(uid, idServico);
+    public ResponseEntity<Void> adicionarServico(
+            @PathVariable String uid,
+            @PathVariable Long idServico,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        prestadorService.adicionarServico(uid, idServico, userDetails.getUsername());
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/me/{uid}/servicos/{idServico}")
-    public ResponseEntity<Void> removerServico(@PathVariable String uid, @PathVariable Long idServico) {
-        prestadorService.removerServico(uid, idServico);
+    public ResponseEntity<Void> removerServico(
+            @PathVariable String uid,
+            @PathVariable Long idServico,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        prestadorService.removerServico(uid, idServico, userDetails.getUsername());
         return ResponseEntity.ok().build();
     }
 }

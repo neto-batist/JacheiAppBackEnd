@@ -31,6 +31,16 @@ public class PrestadorService {
         this.servicoRepo = servicoRepo;
     }
 
+    private PrestadorServico validarDonoDoPainel(String uid, String emailLogado) {
+        PrestadorServico prestador = prestadorRepo.findByUsuario_FirebaseUid(uid)
+                .orElseThrow(() -> new RuntimeException("Prestador não encontrado"));
+
+        if (!prestador.getUsuario().getEmail().equals(emailLogado)) {
+            throw new RuntimeException("Acesso Negado: Você não tem permissão para alterar os serviços deste prestador.");
+        }
+        return prestador;
+    }
+
     @Transactional
     public PrestadorDetalhadoResponse cadastrarPrestador(PrestadorRequest dto) {
         Usuario usuario = usuarioRepo.findByFirebaseUid(dto.getFirebaseUid())
@@ -118,9 +128,9 @@ public class PrestadorService {
     }
 
     @Transactional
-    public void adicionarServico(String uidPrestador, Long idServico) {
-        PrestadorServico prestador = prestadorRepo.findByUsuario_FirebaseUid(uidPrestador)
-                .orElseThrow(() -> new RuntimeException("Prestador não encontrado"));
+    public void adicionarServico(String uidPrestador, Long idServico, String emailLogado) {
+        PrestadorServico prestador = validarDonoDoPainel(uidPrestador, emailLogado); // Protegido!
+
         Servico servico = servicoRepo.findById(idServico)
                 .orElseThrow(() -> new RuntimeException("Serviço não encontrado"));
 
@@ -129,9 +139,8 @@ public class PrestadorService {
     }
 
     @Transactional
-    public void removerServico(String uidPrestador, Long idServico) {
-        PrestadorServico prestador = prestadorRepo.findByUsuario_FirebaseUid(uidPrestador)
-                .orElseThrow(() -> new RuntimeException("Prestador não encontrado"));
+    public void removerServico(String uidPrestador, Long idServico, String emailLogado) {
+        PrestadorServico prestador = validarDonoDoPainel(uidPrestador, emailLogado); // Protegido!
 
         prestador.getServicos().removeIf(s -> s.getId().equals(idServico));
         prestadorRepo.save(prestador);

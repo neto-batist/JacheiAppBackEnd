@@ -15,6 +15,9 @@ import java.util.stream.Collectors;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.MediaType;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+
 @RestController
 @RequestMapping("/api/usuarios")
 public class UsuarioController {
@@ -39,17 +42,22 @@ public class UsuarioController {
     }
 
     @PostMapping("/me/{uid}/favoritos/{idPrestador}")
-    public ResponseEntity<Void> favoritar(@PathVariable String uid, @PathVariable Long idPrestador) {
-        usuarioService.alternarFavorito(uid, idPrestador);
+    public ResponseEntity<Void> favoritar(
+            @PathVariable String uid,
+            @PathVariable Long idPrestador,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        usuarioService.alternarFavorito(uid, idPrestador, userDetails.getUsername());
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/me/{uid}/favoritos")
-    public ResponseEntity<List<PrestadorSimplesResponse>> listarFavoritos(@PathVariable String uid) {
-        Set<PrestadorServico> favoritos = usuarioService.listarFavoritos(uid);
+    public ResponseEntity<List<PrestadorSimplesResponse>> listarFavoritos(
+            @PathVariable String uid,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
-        // Converte a lista de Entidades para DTOs (Mais leves e seguros)
-        // Como estamos listando especificamente os favoritos deste usuário, passamos "true" por padrão
+        Set<PrestadorServico> favoritos = usuarioService.listarFavoritos(uid, userDetails.getUsername());
+
         List<PrestadorSimplesResponse> resposta = favoritos.stream()
                 .map(prestador -> PrestadorSimplesResponse.fromEntity(prestador, true))
                 .collect(Collectors.toList());
@@ -60,9 +68,10 @@ public class UsuarioController {
     @PostMapping(value = "/me/{uid}/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Usuario> atualizarFotoPerfil(
             @PathVariable String uid,
-            @RequestParam("foto") MultipartFile foto) {
+            @RequestParam("foto") MultipartFile foto,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
-        Usuario usuarioAtualizado = usuarioService.atualizarFotoPerfil(uid, foto);
+        Usuario usuarioAtualizado = usuarioService.atualizarFotoPerfil(uid, foto, userDetails.getUsername());
         return ResponseEntity.ok(usuarioAtualizado);
     }
 }
