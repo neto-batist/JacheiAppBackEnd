@@ -2,6 +2,9 @@ package com.ufape.jachei.models;
 
 import com.ufape.jachei.models.base.BaseEntity;
 import jakarta.persistence.*;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -53,8 +56,11 @@ public class PrestadorServico extends BaseEntity {
     @Column(columnDefinition = "DOUBLE DEFAULT 0.0")
     private Double mediaAvaliacoes = 0.0;
 
-    @Column(name = "pasta_fotos_trabalho")
-    private String pastaFotosTrabalho; // Guardará o caminho base. Ex: "/uploads/trabalho_{uid}/"
+    @Column(name = "qtd_fotos_servicos", columnDefinition = "INT DEFAULT 0")
+    private Integer qtdFotosServicos = 0;
+
+    @OneToMany(mappedBy = "prestador", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<FotoPortifolio> fotosPortifolio = new ArrayList<>();
 
     // O serviço destaque (Aparecerá no Card)
     @ManyToOne(fetch = FetchType.LAZY)

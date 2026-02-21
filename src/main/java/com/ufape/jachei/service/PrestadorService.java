@@ -5,6 +5,7 @@ import com.ufape.jachei.dto.PrestadorRequest;
 import com.ufape.jachei.dto.PrestadorSearchFilter;
 import com.ufape.jachei.dto.PrestadorSimplesResponse;
 import com.ufape.jachei.models.*;
+import com.ufape.jachei.repo.FotoPortifolioRepo;
 import com.ufape.jachei.repo.PrestadorServicoRepo;
 import com.ufape.jachei.repo.ServicoRepo;
 import com.ufape.jachei.repo.UsuarioRepo;
@@ -14,7 +15,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.Set;
 
@@ -24,11 +31,13 @@ public class PrestadorService {
     private final PrestadorServicoRepo prestadorRepo;
     private final UsuarioRepo usuarioRepo;
     private final ServicoRepo servicoRepo; // Movido do @Autowired para Injeção via Construtor
+    private final FotoPortifolioRepo fotoPortifolioRepo;
 
-    public PrestadorService(PrestadorServicoRepo prestadorRepo, UsuarioRepo usuarioRepo, ServicoRepo servicoRepo) {
+    public PrestadorService(PrestadorServicoRepo prestadorRepo, UsuarioRepo usuarioRepo, ServicoRepo servicoRepo, FotoPortifolioRepo fotoPortifolioRepo) {
         this.prestadorRepo = prestadorRepo;
         this.usuarioRepo = usuarioRepo;
         this.servicoRepo = servicoRepo;
+        this.fotoPortifolioRepo = fotoPortifolioRepo;
     }
 
     private PrestadorServico validarDonoDoPainel(String uid, String emailLogado) {
@@ -163,6 +172,85 @@ public class PrestadorService {
         PrestadorServico prestador = validarDonoDoPainel(uidPrestador, emailLogado); // Protegido!
 
         prestador.getServicos().removeIf(s -> s.getId().equals(idServico));
+        prestadorRepo.save(prestador);
+    }
+
+    @Transactional
+    public FotoPortifolio adicionarFotoPortifolio(String uid, MultipartFile arquivo, String emailLogado) {
+        PrestadorServico prestador = validarDonoDoPainel(uid, emailLogado);
+
+        if (arquivo.isEmpty()) throw new RuntimeException("Arquivo vazio.");
+        if (prestador.getFotosPortifolio().size() >= 15) {
+            throw new RuntimeException("Limite máximo de 15 fotos atingido.");
+        }
+
+        try {
+            // Cria uma pasta exclusiva para os trabalhos deste prestador
+            String diretorioUpload = "uploads/trabalhos_" + uid + "/";
+            Path caminhoUpload = Paths.get(diretorioUpload);
+            if (!Files.exists(caminhoUpload)) Files.createDirectories(caminhoUpload);
+
+            // Extrai extensão e gera nome único
+            String extensao = "";
+            String nomeOriginal = arquivo.getOriginalFilename();
+            if (nomeOriginal != null && nomeOriginal.contains(".")) {
+                extensao = nomeOriginal.substring(nomeOriginal.lastIndexOf("."));
+            }
+            String novoNomeArquivo = System.currentTimeMillis() + extensao;
+            Path caminhoFisicoArquivo = caminhoUpload.resolve(novoNomeArquivo);
+
+            // Salva no HD do Servidor
+            Files.copy(arquivo.getInputStream(), caminhoFisicoArquivo, StandardCopyOption.REPLACE_EXISTING);
+
+            // Gera a URL acessível para o Flutter
+            String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+            String urlFinal = baseUrl + "/" + diretorioUpload + novoNomeArquivo;
+
+            // Salva no Banco de Dados
+            FotoPortifolio novaFoto = new FotoPortifolio();
+            novaFoto.setUrlFoto(urlFinal);
+            novaFoto.setPrestador(prestador);
+            FotoPortifolio fotoSalva = fotoPortifolioRepo.save(novaFoto);
+
+            // Atualiza o contador de IA
+            prestador.setQtdFotosServicos(prestador.getFotosPortifolio().size() + 1);
+            prestadorRepo.save(prestador);
+
+            return fotoSalva;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Falha ao salvar foto do portfólio", e);
+        }
+    }
+
+    @Transactional
+    public void removerFotoPortifolio(String uid, Long idFoto, String emailLogado) {
+        PrestadorServico prestador = validarDonoDoPainel(uid, emailLogado);
+
+        FotoPortifolio foto = fotoPortifolioRepo.findById(idFoto)
+                .orElseThrow(() -> new RuntimeException("Foto não encontrada."));
+
+        // Garante que a foto pertence a este prestador
+        if (!foto.getPrestador().getId().equals(prestador.getId())) {
+            throw new RuntimeException("Acesso Negado: A foto não pertence ao seu portfólio.");
+        }
+
+        // Tenta excluir fisicamente do HD para liberar espaço
+        try {
+            String url = foto.getUrlFoto();
+            String caminhoRelativo = url.substring(url.indexOf("uploads/"));
+            Path caminhoFisico = Paths.get(caminhoRelativo);
+            Files.deleteIfExists(caminhoFisico);
+        } catch (Exception ignored) {
+            // Se falhar a exclusão física (arquivo perdido), segue para apagar do banco
+        }
+
+        // Remove do Banco
+        fotoPortifolioRepo.delete(foto);
+        fotoPortifolioRepo.flush();
+
+        // Atualiza contador da IA
+        prestador.setQtdFotosServicos(Math.max(0, prestador.getQtdFotosServicos() - 1));
         prestadorRepo.save(prestador);
     }
 }

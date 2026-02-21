@@ -8,10 +8,12 @@ import com.ufape.jachei.service.PrestadorService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/prestadores")
@@ -102,6 +104,26 @@ public class PrestadorController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         prestadorService.removerServico(uid, idServico, userDetails.getUsername());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping(value = "/me/{uid}/fotos-trabalho", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> adicionarFotoPortifolio(
+            @PathVariable String uid,
+            @RequestParam("foto") MultipartFile foto,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        prestadorService.adicionarFotoPortifolio(uid, foto, userDetails.getUsername());
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/me/{uid}/fotos-trabalho/{idFoto}")
+    public ResponseEntity<Void> removerFotoPortifolio(
+            @PathVariable String uid,
+            @PathVariable Long idFoto,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        prestadorService.removerFotoPortifolio(uid, idFoto, userDetails.getUsername());
         return ResponseEntity.ok().build();
     }
 }

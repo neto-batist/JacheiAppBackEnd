@@ -30,7 +30,7 @@ public class PrestadorDetalhadoResponse {
 
     // --- AVALIAÇÕES E PORTFÓLIO ---
     private Double mediaAvaliacoes;
-    private String pastaFotosTrabalho;
+    private Integer qtdFotosServicos;
 
     // --- STATUS DINÂMICO ---
     private boolean isFavorito; // Propriedade de contexto do usuário logado
@@ -40,6 +40,7 @@ public class PrestadorDetalhadoResponse {
     private List<ServicoDTO> servicos;
     private EnderecoDTO endereco;
     private ContatoDTO contato;
+    private List<FotoPortifolioDTO> portifolio;
 
     // ========================================================================
     // INNER CLASSES (Representações seguras e limpas das tabelas conectadas)
@@ -70,6 +71,13 @@ public class PrestadorDetalhadoResponse {
         private String celular;
         private String email;
         private Byte whatsApp;
+    }
+
+    @Data
+    @Builder
+    public static class FotoPortifolioDTO {
+        private Long id;
+        private String urlFoto;
     }
 
     // ========================================================================
@@ -115,6 +123,12 @@ public class PrestadorDetalhadoResponse {
                 .build()
                 : null;
 
+        List<FotoPortifolioDTO> fotosDto = p.getFotosPortifolio() != null
+                ? p.getFotosPortifolio().stream()
+                .map(f -> FotoPortifolioDTO.builder().id(f.getId()).urlFoto(f.getUrlFoto()).build())
+                .collect(Collectors.toList())
+                : List.of();
+
         // 5. Construção Final do Objeto Master
         return PrestadorDetalhadoResponse.builder()
                 .id(p.getId())
@@ -129,7 +143,8 @@ public class PrestadorDetalhadoResponse {
                 .atendeDomiciliar(p.isAtendeDomiciliar())
                 .fazDelivery(p.isFazDelivery())
                 .mediaAvaliacoes(p.getMediaAvaliacoes())
-                .pastaFotosTrabalho(p.getPastaFotosTrabalho())
+                .qtdFotosServicos(p.getQtdFotosServicos())
+                .portifolio(fotosDto)
                 .servicoPrincipal(servicoPrincipalDto)
                 .servicos(servicosDto)
                 .endereco(enderecoDto)
