@@ -1,6 +1,7 @@
 package com.ufape.jachei.service;
 
 import com.ufape.jachei.dto.PrestadorRequest;
+import com.ufape.jachei.dto.PrestadorSimplesResponse;
 import com.ufape.jachei.models.*;
 import com.ufape.jachei.repo.PrestadorServicoRepo;
 import com.ufape.jachei.repo.ServicoRepo;
@@ -9,8 +10,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class PrestadorService {
@@ -79,6 +85,25 @@ public class PrestadorService {
 
     public Optional<PrestadorServico> buscarPorUid(String uid) {
         return prestadorRepo.findByUsuario_FirebaseUid(uid);
+    }
+
+    public Page<PrestadorSimplesResponse> buscarPrestadores(
+            Specification<PrestadorServico> spec,
+            Pageable pageable,
+            String emailLogado) {
+
+        // 1. Busca os prestadores paginados com os filtros
+        Page<PrestadorServico> prestadores = prestadorRepo.findAll(spec, pageable);
+
+        // 2. Busca o usuário logado para saber as preferências dele
+        Usuario usuario = usuarioRepo.findByEmail(emailLogado).orElse(null);
+        Set<PrestadorServico> favoritosDoUser = (usuario != null) ? usuario.getFavoritos() : Set.of();
+
+        // 3. Converte para o DTO Simples setando o booleano
+        return prestadores.map(prestador -> {
+            boolean isFav = favoritosDoUser.contains(prestador);
+            return PrestadorSimplesResponse.fromEntity(prestador, isFav);
+        });
     }
 
     @Autowired // Ou via construtor

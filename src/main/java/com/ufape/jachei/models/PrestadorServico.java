@@ -49,4 +49,15 @@ public class PrestadorServico extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "id_servicos")
     )
     private Set<Servico> servicos;
+
+    @Column(columnDefinition = "DOUBLE DEFAULT 0.0")
+    private Double mediaAvaliacoes = 0.0;
+
+    @Column(name = "pasta_fotos_trabalho")
+    private String pastaFotosTrabalho; // Guardará o caminho base. Ex: "/uploads/trabalho_{uid}/"
+
+    // O serviço destaque (Aparecerá no Card)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_servico_principal")
+    private Servico servicoPrincipal;
 }

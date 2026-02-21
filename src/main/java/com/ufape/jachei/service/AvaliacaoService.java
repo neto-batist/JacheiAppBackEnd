@@ -39,7 +39,14 @@ public class AvaliacaoService {
         avaliacao.setNota(dto.getNota());
         avaliacao.setDescricao(dto.getDescricao());
 
-        return avaliacaoRepo.save(avaliacao);
+        Avaliacao salva = avaliacaoRepo.save(avaliacao);
+
+        // --- GATILHO DE MÉDIA ---
+        Double novaMedia = avaliacaoRepo.calcularMediaDoPrestador(prestador.getId());
+        prestador.setMediaAvaliacoes(novaMedia);
+        prestadorRepo.save(prestador);
+
+        return salva;
     }
 
     public List<Avaliacao> listarPorPrestador(Long idPrestador) {

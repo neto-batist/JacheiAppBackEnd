@@ -2,6 +2,7 @@ package com.ufape.jachei.repo;
 
 import com.ufape.jachei.models.PrestadorServico;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -10,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface PrestadorServicoRepo extends JpaRepository<PrestadorServico, Long> {
+public interface PrestadorServicoRepo extends JpaRepository<PrestadorServico, Long>, JpaSpecificationExecutor<PrestadorServico> {
 
     // Fórmula de Haversine para buscar prestadores num raio de X km
     @Query(value = "SELECT *, " +
