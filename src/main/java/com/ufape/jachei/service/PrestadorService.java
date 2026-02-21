@@ -1,20 +1,20 @@
 package com.ufape.jachei.service;
 
+import com.ufape.jachei.dto.PrestadorDetalhadoResponse;
 import com.ufape.jachei.dto.PrestadorRequest;
+import com.ufape.jachei.dto.PrestadorSearchFilter;
 import com.ufape.jachei.dto.PrestadorSimplesResponse;
 import com.ufape.jachei.models.*;
 import com.ufape.jachei.repo.PrestadorServicoRepo;
 import com.ufape.jachei.repo.ServicoRepo;
 import com.ufape.jachei.repo.UsuarioRepo;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
+import com.ufape.jachei.specification.PrestadorSpecification;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -22,35 +22,28 @@ import java.util.Set;
 public class PrestadorService {
 
     private final PrestadorServicoRepo prestadorRepo;
-    private final UsuarioRepo usuarioRepo; // NOVO
+    private final UsuarioRepo usuarioRepo;
+    private final ServicoRepo servicoRepo; // Movido do @Autowired para Injeção via Construtor
 
-    public PrestadorService(PrestadorServicoRepo prestadorRepo, UsuarioRepo usuarioRepo) {
+    public PrestadorService(PrestadorServicoRepo prestadorRepo, UsuarioRepo usuarioRepo, ServicoRepo servicoRepo) {
         this.prestadorRepo = prestadorRepo;
         this.usuarioRepo = usuarioRepo;
+        this.servicoRepo = servicoRepo;
     }
 
     @Transactional
-    public PrestadorServico cadastrarPrestador(PrestadorRequest dto) {
-        // 1. Busca o usuário que já existe
+    public PrestadorDetalhadoResponse cadastrarPrestador(PrestadorRequest dto) {
         Usuario usuario = usuarioRepo.findByFirebaseUid(dto.getFirebaseUid())
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado. Crie a conta antes de virar prestador."));
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado."));
 
         PrestadorServico prestador = new PrestadorServico();
-
-        // 2. VINCULA O USUÁRIO AO PRESTADOR (Aqui ele herda Foto, Nome e Email automaticamente!)
         prestador.setUsuario(usuario);
-
         prestador.setCpf(dto.getCpf());
-
-        //// Dados Geo
         prestador.setLatitude(dto.getLatitude());
         prestador.setLongitude(dto.getLongitude());
-
-        // Flags
         prestador.setAtende24h(dto.isAtende24h());
         prestador.setFazDelivery(dto.isFazDelivery());
 
-        // Mapeando o Endereço que veio da requisição
         Endereco endereco = new Endereco();
         if (dto.getEndereco() != null) {
             endereco.setBairro(dto.getEndereco().getBairro());
@@ -62,62 +55,75 @@ public class PrestadorService {
         }
         prestador.setEndereco(endereco);
 
-        // Mapeando o Contato que veio da requisição
         Contato contato = new Contato();
         if (dto.getContato() != null) {
             contato.setTelefone(dto.getContato().getTelefone());
             contato.setCelular(dto.getContato().getCelular());
             contato.setWhatsApp(dto.getContato().getWhatsApp() != null ? dto.getContato().getWhatsApp() : (byte) 0);
             contato.setEmail(dto.getContato().getEmail());
-            contato.setInstagramLink(dto.getContato().getInstagramLink());
-            contato.setFaceBookLink(dto.getContato().getFaceBookLink());
         } else {
-            contato.setWhatsApp((byte) 0); // Fallback de segurança para o banco
+            contato.setWhatsApp((byte) 0);
         }
         prestador.setContato(contato);
 
-        return prestadorRepo.save(prestador);
+        PrestadorServico salvo = prestadorRepo.save(prestador);
+
+        // Retorna o DTO seguro e não a Entidade
+        return PrestadorDetalhadoResponse.fromEntity(salvo, false);
     }
 
-    public List<PrestadorServico> buscarProximos(double lat, double lng, double raioKm) {
-        return prestadorRepo.findNearbyPrestadors(lat, lng, raioKm);
-    }
-
-    public Optional<PrestadorServico> buscarPorUid(String uid) {
-        return prestadorRepo.findByUsuario_FirebaseUid(uid);
-    }
-
+    // =========================================================================
+    // O CÉREBRO CENTRAL DE BUSCA (A base para a IA)
+    // =========================================================================
+    @Transactional(readOnly = true)
     public Page<PrestadorSimplesResponse> buscarPrestadores(
-            Specification<PrestadorServico> spec,
+            PrestadorSearchFilter filtro,
             Pageable pageable,
             String emailLogado) {
 
-        // 1. Busca os prestadores paginados com os filtros
+        // 1. Gera a Query Dinâmica baseada nos parâmetros (IA ou Usuário)
+        Specification<PrestadorServico> spec = PrestadorSpecification.buildFilter(filtro);
+
+        // 2. Executa a busca paginada no banco
         Page<PrestadorServico> prestadores = prestadorRepo.findAll(spec, pageable);
 
-        // 2. Busca o usuário logado para saber as preferências dele
-        Usuario usuario = usuarioRepo.findByEmail(emailLogado).orElse(null);
+        // 3. Busca o usuário para cruzar a lista de favoritos
+        Usuario usuario = (emailLogado != null) ? usuarioRepo.findByEmail(emailLogado).orElse(null) : null;
         Set<PrestadorServico> favoritosDoUser = (usuario != null) ? usuario.getFavoritos() : Set.of();
 
-        // 3. Converte para o DTO Simples setando o booleano
+        // 4. Mapeia para o Card Enxuto
         return prestadores.map(prestador -> {
             boolean isFav = favoritosDoUser.contains(prestador);
             return PrestadorSimplesResponse.fromEntity(prestador, isFav);
         });
     }
 
-    @Autowired // Ou via construtor
-    private ServicoRepo servicoRepo;
+    // =========================================================================
+    // BUSCA DETALHADA PARA A TELA DE PERFIL DO PRESTADOR
+    // =========================================================================
+    @Transactional(readOnly = true)
+    public PrestadorDetalhadoResponse buscarDetalhes(Long idPrestador, String emailLogado) {
+        PrestadorServico prestador = prestadorRepo.findById(idPrestador)
+                .orElseThrow(() -> new RuntimeException("Prestador não encontrado"));
+
+        Usuario usuario = (emailLogado != null) ? usuarioRepo.findByEmail(emailLogado).orElse(null) : null;
+        boolean isFav = (usuario != null) && usuario.getFavoritos().contains(prestador);
+
+        return PrestadorDetalhadoResponse.fromEntity(prestador, isFav);
+    }
+
+    public Optional<PrestadorDetalhadoResponse> buscarMeuPerfil(String uid) {
+        return prestadorRepo.findByUsuario_FirebaseUid(uid)
+                .map(p -> PrestadorDetalhadoResponse.fromEntity(p, false)); // Dono do próprio perfil não é "favorito" de si
+    }
 
     @Transactional
     public void adicionarServico(String uidPrestador, Long idServico) {
         PrestadorServico prestador = prestadorRepo.findByUsuario_FirebaseUid(uidPrestador)
                 .orElseThrow(() -> new RuntimeException("Prestador não encontrado"));
-
         Servico servico = servicoRepo.findById(idServico)
                 .orElseThrow(() -> new RuntimeException("Serviço não encontrado"));
 
-        // Adiciona à lista (o Set garante que não duplica)
         prestador.getServicos().add(servico);
         prestadorRepo.save(prestador);
     }

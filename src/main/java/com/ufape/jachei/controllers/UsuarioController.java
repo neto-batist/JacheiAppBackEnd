@@ -1,6 +1,6 @@
 package com.ufape.jachei.controllers;
 
-import com.ufape.jachei.dto.PrestadorResponse;
+import com.ufape.jachei.dto.PrestadorSimplesResponse; // <--- Import atualizado
 import com.ufape.jachei.dto.UsuarioRequest;
 import com.ufape.jachei.models.PrestadorServico;
 import com.ufape.jachei.models.Usuario;
@@ -45,12 +45,13 @@ public class UsuarioController {
     }
 
     @GetMapping("/me/{uid}/favoritos")
-    public ResponseEntity<List<PrestadorResponse>> listarFavoritos(@PathVariable String uid) {
+    public ResponseEntity<List<PrestadorSimplesResponse>> listarFavoritos(@PathVariable String uid) {
         Set<PrestadorServico> favoritos = usuarioService.listarFavoritos(uid);
 
-        // Converte a lista de Entidades para DTOs para evitar Loop e dados sensíveis
-        List<PrestadorResponse> resposta = favoritos.stream()
-                .map(PrestadorResponse::fromEntity)
+        // Converte a lista de Entidades para DTOs (Mais leves e seguros)
+        // Como estamos listando especificamente os favoritos deste usuário, passamos "true" por padrão
+        List<PrestadorSimplesResponse> resposta = favoritos.stream()
+                .map(prestador -> PrestadorSimplesResponse.fromEntity(prestador, true))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(resposta);
