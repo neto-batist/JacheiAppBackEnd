@@ -10,8 +10,6 @@ import com.ufape.jachei.repo.UsuarioRepo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 public class AvaliacaoService {
 
@@ -26,30 +24,62 @@ public class AvaliacaoService {
     }
 
     @Transactional
-    public Avaliacao avaliar(AvaliacaoRequest dto) {
+    public Avaliacao cadastrarAvaliacao(AvaliacaoRequest dto, String emailAvaliador) {
+        Usuario usuario = usuarioRepo.findByEmail(emailAvaliador)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado."));
+
         PrestadorServico prestador = prestadorRepo.findById(dto.getIdPrestador())
-                .orElseThrow(() -> new RuntimeException("Prestador não encontrado"));
+                .orElseThrow(() -> new RuntimeException("Prestador não encontrado."));
 
-        Usuario usuario = usuarioRepo.findByFirebaseUid(dto.getUidUsuario())
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+        // Dívida Técnica Resolvida 1: Auto-avaliação
+        if (prestador.getUsuario().getId().equals(usuario.getId())) {
+            throw new RuntimeException("Você não pode avaliar seu próprio perfil de prestador.");
+        }
 
-        Avaliacao avaliacao = new Avaliacao();
-        avaliacao.setPrestador(prestador);
-        avaliacao.setUsuario(usuario);
-        avaliacao.setNota(dto.getNota());
-        avaliacao.setDescricao(dto.getDescricao());
+        // Dívida Técnica Resolvida 2: Spam (Apenas 1 avaliação por pessoa)
+        if (avaliacaoRepo.existsByPrestadorAndUsuario(prestador, usuario)) {
+            throw new RuntimeException("Você já avaliou este prestador.");
+        }
 
-        Avaliacao salva = avaliacaoRepo.save(avaliacao);
+        Avaliacao avaliacaoNova = new Avaliacao();
+        avaliacaoNova.setUsuario(usuario);
+        avaliacaoNova.setPrestador(prestador);
+        avaliacaoNova.setNota(dto.getNota());
+        avaliacaoNova.setDescricao(dto.getDescricao());
 
-        // --- GATILHO DE MÉDIA ---
-        Double novaMedia = avaliacaoRepo.calcularMediaDoPrestador(prestador.getId());
-        prestador.setMediaAvaliacoes(novaMedia);
-        prestadorRepo.save(prestador);
+        Avaliacao salva = avaliacaoRepo.save(avaliacaoNova);
 
+        atualizarMedia(prestador);
         return salva;
     }
 
-    public List<Avaliacao> listarPorPrestador(Long idPrestador) {
-        return avaliacaoRepo.findByPrestadorId(idPrestador);
+    @Transactional
+    public void deletarAvaliacao(Long idAvaliacao, String emailLogado) {
+        Avaliacao avaliacao = avaliacaoRepo.findById(idAvaliacao)
+                .orElseThrow(() -> new RuntimeException("Avaliação não encontrada."));
+
+        Usuario usuarioLogado = usuarioRepo.findByEmail(emailLogado)
+                .orElseThrow(() -> new RuntimeException("Usuário inválido."));
+
+        // Dívida Técnica Resolvida 3: Segurança (Só o dono pode apagar a própria avaliação)
+        if (!avaliacao.getUsuario().getId().equals(usuarioLogado.getId())) {
+            throw new RuntimeException("Acesso negado: Você não é o autor desta avaliação.");
+        }
+
+        PrestadorServico prestador = avaliacao.getPrestador();
+
+        avaliacaoRepo.delete(avaliacao);
+
+        // Força o Hibernate a executar o DELETE no banco antes de re-calcular a média
+        avaliacaoRepo.flush();
+
+        atualizarMedia(prestador);
+    }
+
+    // Método privado centralizado para recalcular a nota
+    private void atualizarMedia(PrestadorServico prestador) {
+        Double novaMedia = avaliacaoRepo.calcularMediaDoPrestador(prestador.getId());
+        prestador.setMediaAvaliacoes(novaMedia != null ? novaMedia : 0.0);
+        prestadorRepo.save(prestador);
     }
 }
