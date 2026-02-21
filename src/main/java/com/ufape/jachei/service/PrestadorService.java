@@ -42,16 +42,26 @@ public class PrestadorService {
     }
 
     @Transactional
-    public PrestadorDetalhadoResponse cadastrarPrestador(PrestadorRequest dto) {
-        Usuario usuario = usuarioRepo.findByFirebaseUid(dto.getFirebaseUid())
+    public PrestadorDetalhadoResponse cadastrarPrestador(PrestadorRequest dto, String emailLogado) {
+
+        // 1. Busca quem é o usuário real baseado na assinatura inquebrável do JWT
+        Usuario usuario = usuarioRepo.findByEmail(emailLogado)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado."));
 
+        // 2. Trava de Duplicação
+        Optional<PrestadorServico> existente = prestadorRepo.findByUsuario_FirebaseUid(usuario.getFirebaseUid());
+        if (existente.isPresent()) {
+            throw new RuntimeException("Você já possui um perfil de prestador de serviços.");
+        }
+
+        // 3. Cria o perfil ("Upgrade" da conta)
         PrestadorServico prestador = new PrestadorServico();
         prestador.setUsuario(usuario);
         prestador.setCpf(dto.getCpf());
         prestador.setLatitude(dto.getLatitude());
         prestador.setLongitude(dto.getLongitude());
         prestador.setAtende24h(dto.isAtende24h());
+        prestador.setAtendeDomiciliar(dto.isAtendeDomiciliar());
         prestador.setFazDelivery(dto.isFazDelivery());
 
         Endereco endereco = new Endereco();
@@ -78,8 +88,18 @@ public class PrestadorService {
 
         PrestadorServico salvo = prestadorRepo.save(prestador);
 
-        // Retorna o DTO seguro e não a Entidade
         return PrestadorDetalhadoResponse.fromEntity(salvo, false);
+    }
+
+    // =========================================================================
+    // NOVO MÉTODO PARA O PAINEL PRIVADO (Usa o email e não o UID)
+    // =========================================================================
+    public Optional<PrestadorDetalhadoResponse> buscarMeuPainel(String emailLogado) {
+        Usuario usuario = usuarioRepo.findByEmail(emailLogado).orElse(null);
+        if (usuario == null) return Optional.empty();
+
+        return prestadorRepo.findByUsuario_FirebaseUid(usuario.getFirebaseUid())
+                .map(p -> PrestadorDetalhadoResponse.fromEntity(p, false));
     }
 
     // =========================================================================

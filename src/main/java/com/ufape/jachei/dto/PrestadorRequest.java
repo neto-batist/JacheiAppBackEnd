@@ -1,7 +1,7 @@
 package com.ufape.jachei.dto;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
@@ -10,17 +10,16 @@ public class PrestadorRequest {
     @NotBlank(message = "O CPF é obrigatório")
     private String cpf;
 
-    @NotBlank(message = "O UID do Firebase é obrigatório")
-    private String firebaseUid;
-
-    // Coordenadas iniciais
+    @NotNull(message = "A latitude é obrigatória")
     private Double latitude;
+
+    @NotNull(message = "A longitude é obrigatória")
     private Double longitude;
 
     private boolean atende24h;
+    private boolean atendeDomiciliar;
     private boolean fazDelivery;
 
-    // ---> NOVOS CAMPOS ANINHADOS <---
     private EnderecoRequest endereco;
     private ContatoRequest contato;
 
@@ -30,7 +29,7 @@ public class PrestadorRequest {
         private String cep;
         private String cidade;
         private String rua;
-        private int numero;
+        private Integer numero;
         private String uf;
     }
 
@@ -38,9 +37,7 @@ public class PrestadorRequest {
     public static class ContatoRequest {
         private String telefone;
         private String celular;
-        private Byte whatsApp; // Usa Byte pois seu banco espera 1 ou 0
+        private Byte whatsApp;
         private String email;
-        private String instagramLink;
-        private String faceBookLink;
     }
 }

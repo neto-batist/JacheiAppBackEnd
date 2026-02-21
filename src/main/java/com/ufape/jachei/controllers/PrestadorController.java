@@ -24,9 +24,26 @@ public class PrestadorController {
     }
 
     @PostMapping
-    public ResponseEntity<PrestadorDetalhadoResponse> criar(@Valid @RequestBody PrestadorRequest dto) {
-        PrestadorDetalhadoResponse novo = prestadorService.cadastrarPrestador(dto);
+    public ResponseEntity<PrestadorDetalhadoResponse> criar(
+            @Valid @RequestBody PrestadorRequest dto,
+            @AuthenticationPrincipal UserDetails userDetails) { // <--- JWT Injetado
+
+        // Passamos o email seguro para o Service fazer o "Upgrade"
+        PrestadorDetalhadoResponse novo = prestadorService.cadastrarPrestador(dto, userDetails.getUsername());
         return ResponseEntity.status(201).body(novo);
+    }
+
+    // ===============================================================================
+    // DÍVIDA RESOLVIDA: Rota limpa para o Painel do Prestador
+    // Ex: GET /api/prestadores/me
+    // ===============================================================================
+    @GetMapping("/me")
+    public ResponseEntity<PrestadorDetalhadoResponse> buscarMeuPainel(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        return prestadorService.buscarMeuPainel(userDetails.getUsername())
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // ===============================================================================
