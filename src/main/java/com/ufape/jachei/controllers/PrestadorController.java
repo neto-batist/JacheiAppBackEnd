@@ -107,6 +107,16 @@ public class PrestadorController {
         return ResponseEntity.ok().build();
     }
 
+    @PutMapping("/me/{uid}/servico-principal/{idServico}")
+    public ResponseEntity<Void> definirServicoPrincipal(
+            @PathVariable String uid,
+            @PathVariable Long idServico,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        prestadorService.definirServicoPrincipal(uid, idServico, userDetails.getUsername());
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping(value = "/me/{uid}/fotos-trabalho", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> adicionarFotoPortifolio(
             @PathVariable String uid,

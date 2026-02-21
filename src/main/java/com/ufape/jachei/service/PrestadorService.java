@@ -176,6 +176,22 @@ public class PrestadorService {
     }
 
     @Transactional
+    public void definirServicoPrincipal(String uidPrestador, Long idServico, String emailLogado) {
+        PrestadorServico prestador = validarDonoDoPainel(uidPrestador, emailLogado);
+
+        Servico servico = servicoRepo.findById(idServico)
+                .orElseThrow(() -> new RuntimeException("Serviço não encontrado"));
+
+        // Se o serviço que ele quer destacar nem faz parte do portfólio dele, bloqueia!
+        if (!prestador.getServicos().contains(servico)) {
+            throw new RuntimeException("Você não pode destacar um serviço que não oferece.");
+        }
+
+        prestador.setServicoPrincipal(servico);
+        prestadorRepo.save(prestador);
+    }
+
+    @Transactional
     public FotoPortifolio adicionarFotoPortifolio(String uid, MultipartFile arquivo, String emailLogado) {
         PrestadorServico prestador = validarDonoDoPainel(uid, emailLogado);
 
