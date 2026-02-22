@@ -72,6 +72,7 @@ public class PrestadorService {
         prestador.setAtende24h(dto.isAtende24h());
         prestador.setAtendeDomiciliar(dto.isAtendeDomiciliar());
         prestador.setFazDelivery(dto.isFazDelivery());
+        prestador.setDescricaoBio(dto.getDescricaoBio());
 
         Endereco endereco = new Endereco();
         if (dto.getEndereco() != null) {

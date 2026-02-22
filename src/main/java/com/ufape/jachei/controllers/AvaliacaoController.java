@@ -1,6 +1,7 @@
 package com.ufape.jachei.controllers;
 
 import com.ufape.jachei.dto.AvaliacaoRequest;
+import com.ufape.jachei.dto.AvaliacaoResponse;
 import com.ufape.jachei.models.Avaliacao;
 import com.ufape.jachei.service.AvaliacaoService;
 import jakarta.validation.Valid;
@@ -20,14 +21,14 @@ public class AvaliacaoController {
     }
 
     @PostMapping
-    public ResponseEntity<Avaliacao> criar(
+    public ResponseEntity<AvaliacaoResponse> criar(
             @Valid @RequestBody AvaliacaoRequest dto,
-            @AuthenticationPrincipal UserDetails userDetails) { // <--- Injeta a Identidade Real
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         String emailLogado = userDetails.getUsername();
         Avaliacao nova = avaliacaoService.cadastrarAvaliacao(dto, emailLogado);
-
-        return ResponseEntity.status(201).body(nova);
+        
+        return ResponseEntity.status(201).body(AvaliacaoResponse.fromEntity(nova));
     }
 
     @DeleteMapping("/{id}")

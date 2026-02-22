@@ -19,6 +19,7 @@ public class PrestadorRequest {
     private boolean atende24h;
     private boolean atendeDomiciliar;
     private boolean fazDelivery;
+    private String descricaoBio;
 
     private EnderecoRequest endereco;
     private ContatoRequest contato;
