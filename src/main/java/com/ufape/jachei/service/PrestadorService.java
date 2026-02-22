@@ -101,6 +101,53 @@ public class PrestadorService {
         return PrestadorDetalhadoResponse.fromEntity(salvo, false);
     }
 
+    @Transactional
+    public PrestadorDetalhadoResponse atualizarPrestador(PrestadorRequest dto, String emailLogado) {
+
+        // 1. Descobre quem é o dono do token
+        Usuario usuario = usuarioRepo.findByEmail(emailLogado)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado."));
+
+        // 2. Trava de Segurança: Busca o prestador estritamente vinculado a este usuário
+        PrestadorServico prestador = prestadorRepo.findByUsuario_FirebaseUid(usuario.getFirebaseUid())
+                .orElseThrow(() -> new RuntimeException("Você ainda não possui um perfil de prestador para editar."));
+
+        // 3. Atualiza os Dados Principais
+        prestador.setCpf(dto.getCpf());
+        prestador.setDescricaoBio(dto.getDescricaoBio());
+        prestador.setLatitude(dto.getLatitude());
+        prestador.setLongitude(dto.getLongitude());
+        prestador.setAtende24h(dto.isAtende24h());
+        prestador.setAtendeDomiciliar(dto.isAtendeDomiciliar());
+        prestador.setFazDelivery(dto.isFazDelivery());
+
+        // 4. Atualiza o Endereço
+        if (dto.getEndereco() != null) {
+            Endereco endereco = prestador.getEndereco() != null ? prestador.getEndereco() : new Endereco();
+            endereco.setBairro(dto.getEndereco().getBairro());
+            endereco.setCep(dto.getEndereco().getCep());
+            endereco.setCidade(dto.getEndereco().getCidade());
+            endereco.setRua(dto.getEndereco().getRua());
+            endereco.setNumero(dto.getEndereco().getNumero());
+            endereco.setUf(dto.getEndereco().getUf());
+            prestador.setEndereco(endereco);
+        }
+
+        // 5. Atualiza o Contato
+        if (dto.getContato() != null) {
+            Contato contato = prestador.getContato() != null ? prestador.getContato() : new Contato();
+            contato.setTelefone(dto.getContato().getTelefone());
+            contato.setCelular(dto.getContato().getCelular());
+            contato.setWhatsApp(dto.getContato().getWhatsApp() != null ? dto.getContato().getWhatsApp() : (byte) 0);
+            contato.setEmail(dto.getContato().getEmail());
+            prestador.setContato(contato);
+        }
+
+        // 6. Salva e devolve o DTO atualizado para o Front-end remontar a tela
+        PrestadorServico salvo = prestadorRepo.save(prestador);
+        return PrestadorDetalhadoResponse.fromEntity(salvo, false);
+    }
+
     // =========================================================================
     // NOVO MÉTODO PARA O PAINEL PRIVADO (Usa o email e não o UID)
     // =========================================================================

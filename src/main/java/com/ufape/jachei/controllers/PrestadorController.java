@@ -47,6 +47,14 @@ public class PrestadorController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+    @PutMapping("/me")
+    public ResponseEntity<PrestadorDetalhadoResponse> atualizarPerfil(
+            @Valid @RequestBody PrestadorRequest dto,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        PrestadorDetalhadoResponse atualizado = prestadorService.atualizarPrestador(dto, userDetails.getUsername());
+        return ResponseEntity.ok(atualizado);
+    }
 
     // ===============================================================================
     // ROTA CENTRAL: Pesquisa e Filtros (Onde o Flutter e a IA vão se conectar)
